@@ -1,58 +1,104 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SimpleChat
 {
     public class Peer
     {
-        private const string PipeNamePrefix = @"simple_chat_";
+        private const int UdpPortRangeStart = 18000;
+        private const int UdpPortRangeLength = 8;
+
+        private UdpClient listener;
+        private IReadOnlyCollection<int> otherPeersPorts;
+        private int port;
 
         public event EventHandler<DataReceivedEventArgs> OnDataReceived;
 
         public void Start()
         {
-            _ = Task.Run(() =>
+            DiscoverOtherPeers();
+            InitListener();
+            BackgroundLoop(() =>
             {
-                while (true)
-                {
-                    using (var pipe = new NamedPipeServerStream(GetNamedPipeName(Process.GetCurrentProcess().Id), PipeDirection.InOut))
-                    {
-                        pipe.WaitForConnection();
-                        pipe.WaitForPipeDrain();
-                        using (var reader = new BinaryReader(pipe, Encoding.UTF8))
-                        {
-                            var length = reader.ReadInt32();
-                            var data = reader.ReadBytes(length);
-                            OnDataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
-                        }
-                    }
-                }
+                DiscoverOtherPeers();
+                Thread.Sleep(1000);
             });
+            BackgroundLoop(Accept);
         }
 
         public void SendToAll(byte[] bytes)
         {
-            var processes = Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Where(x => x.Id != Process.GetCurrentProcess().Id);
-            foreach (var process in processes)
+            var stream = new MemoryStream();
+            var writer = new BinaryWriter(stream);
+            writer.Write(bytes.Length);
+            writer.Write(bytes);
+            writer.Flush();
+            var bytesToSend = stream.ToArray();
+
+            foreach (var otherPeersPort in otherPeersPorts)
             {
-                using (var pipe = new NamedPipeClientStream(GetNamedPipeName(process.Id)))
+                var ep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), otherPeersPort);
+                var client = new UdpClient();
+                try
                 {
-                    pipe.Connect(1000);
-                    using (var writer = new BinaryWriter(pipe))
-                    {
-                        writer.Write(bytes.Length);
-                        writer.Write(bytes);
-                    }
+                    client.Connect(ep);
+                    client.Send(bytesToSend, bytesToSend.Length);
+                }
+                catch (SocketException)
+                {
                 }
             }
         }
 
-        private string GetNamedPipeName(int processId) => PipeNamePrefix + processId;
+        private void Accept()
+        {
+            var ep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port);
+            try
+            {
+                var bytes = listener.Receive(ref ep);
+                var stream = new MemoryStream(bytes);
+                var reader = new BinaryReader(stream, Encoding.UTF8);
+                var length = reader.ReadInt32();
+                var data = reader.ReadBytes(length);
+                OnDataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
+            }
+            catch (SocketException)
+            {
+            }
+        }
+
+        private void InitListener()
+        {
+            port = Enumerable.Range(UdpPortRangeStart, UdpPortRangeLength).First(x => !otherPeersPorts.Contains(x));
+            listener = new UdpClient(port);
+        }
+
+        private void DiscoverOtherPeers()
+        {
+            otherPeersPorts = IPGlobalProperties.GetIPGlobalProperties()
+                .GetActiveUdpListeners()
+                .Select(x => x.Port)
+                .Where(x => x >= UdpPortRangeStart && x < UdpPortRangeStart + UdpPortRangeLength)
+                .Where(x => x != port)
+                .ToHashSet();
+        }
+
+        private void BackgroundLoop(Action action)
+        {
+            _ = Task.Run(() =>
+            {
+                while (true)
+                    action();
+            });
+        }
     }
 
     public class DataReceivedEventArgs : EventArgs
