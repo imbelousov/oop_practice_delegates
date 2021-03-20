@@ -20,7 +20,7 @@ namespace SimpleChat
         private IReadOnlyCollection<int> otherPeersPorts;
         private int port;
 
-        public event EventHandler<DataReceivedEventArgs> OnDataReceived;
+        public event EventHandler<DataReceivedEventArgs> DataReceived;
 
         public void Start()
         {
@@ -43,9 +43,9 @@ namespace SimpleChat
             writer.Flush();
             var bytesToSend = stream.ToArray();
 
-            foreach (var otherPeersPort in otherPeersPorts)
+            foreach (var otherPeerPort in otherPeersPorts)
             {
-                var ep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), otherPeersPort);
+                var ep = new IPEndPoint(IPAddress.Parse("127.0.0.1"), otherPeerPort);
                 var client = new UdpClient();
                 try
                 {
@@ -54,6 +54,10 @@ namespace SimpleChat
                 }
                 catch (SocketException)
                 {
+                }
+                finally
+                {
+                    client.Dispose();
                 }
             }
         }
@@ -68,7 +72,7 @@ namespace SimpleChat
                 var reader = new BinaryReader(stream, Encoding.UTF8);
                 var length = reader.ReadInt32();
                 var data = reader.ReadBytes(length);
-                OnDataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
+                DataReceived?.Invoke(this, new DataReceivedEventArgs {Data = data});
             }
             catch (SocketException)
             {

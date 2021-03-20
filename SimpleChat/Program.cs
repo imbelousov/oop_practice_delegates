@@ -16,7 +16,7 @@ namespace SimpleChat
             Console.Title = $"Simple chat [{userName}]";
 
             var peer = new Peer();
-            peer.OnDataReceived += OnDataReceived;
+            peer.DataReceived += OnDataReceived;
             peer.Start();
 
             while (true)
