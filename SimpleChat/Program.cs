@@ -13,7 +13,7 @@ namespace SimpleChat
             Console.Write("Enter your name: ");
             var userName = Console.ReadLine();
             Console.Clear();
-            Console.Title += $" [{userName}]";
+            Console.Title = $"Simple chat [{userName}]";
 
             var peer = new Peer();
             peer.OnDataReceived += OnDataReceived;
