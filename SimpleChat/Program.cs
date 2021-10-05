@@ -36,8 +36,15 @@ namespace SimpleChat
         private static void OnDataReceived(object sender, DataReceivedEventArgs eventArgs)
         {
             var bytes = eventArgs.Data;
-            var message = encoder.Decode(bytes);
-            Console.WriteLine($"[{message.CreatedAt} {message.Author}] >> {message.Text}");
+            try
+            {
+                var message = encoder.Decode(bytes);
+                Console.WriteLine($"[{message.CreatedAt} {message.Author}] >> {message.Text}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 }
