@@ -20,10 +20,8 @@
 Доработайте класс `MessageEncoder` так, чтобы он стал расширяемым и реализуйте два его расширения:
 шифрование и сжатие сообщений. Расширения должны работать как по отдельности, так и вместе.
 Организуйте код так, чтобы добавление расширений не требовало внесения изменений  в исходный код
-класса `MessageEncoder`. Можно использовать любые алгоритмы шифрования и сжатия на ваш выбор.
-Например, [AES](https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0) и [Deflate](https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.deflatestream?view=net-5.0).
-Рекомендуется воспользоваться готовыми реализациями алгоритмов шифрования и сжатия в классах
-`AesHelper` и `DeflateHelper`.
+класса `MessageEncoder`. Рекомендуется воспользоваться готовыми реализациями алгоритмов шифрования и сжатия в классах
+`AesHelper` (алгоритм шифрования [AES](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)) и `DeflateHelper` (алгоритм сжатия [Deflate](https://en.wikipedia.org/wiki/Deflate)), но вы можете воспользоваться любым другим алгоритмом на ваш вкус.
 
 # Задание 3*
 
